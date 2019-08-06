@@ -45,7 +45,7 @@ describe('Parameter', () => {
       cy.getByTestId('ParameterApplyButton')
         .click();
 
-      cy.getByTestId('DynamicTable')
+      cy.getByTestId('TableVisualization')
         .should('contain', 'Redash');
     });
 
@@ -82,7 +82,7 @@ describe('Parameter', () => {
       cy.getByTestId('ParameterApplyButton')
         .click();
 
-      cy.getByTestId('DynamicTable')
+      cy.getByTestId('TableVisualization')
         .should('contain', 42);
 
       cy.getByTestId('ParameterName-test-parameter')
@@ -92,7 +92,7 @@ describe('Parameter', () => {
       cy.getByTestId('ParameterApplyButton')
         .click();
 
-      cy.getByTestId('DynamicTable')
+      cy.getByTestId('TableVisualization')
         .should('contain', 31415);
     });
 
@@ -121,7 +121,7 @@ describe('Parameter', () => {
       };
 
       createQuery(queryData, false)
-        .then(({ id }) => cy.visit(`/queries/${id}`));
+        .then(({ id }) => cy.visit(`/queries/${id}/source`));
     });
 
     it('updates the results after selecting a value', () => {
@@ -129,14 +129,43 @@ describe('Parameter', () => {
         .find('.ant-select')
         .click();
 
-      cy.contains('li.ant-select-dropdown-menu-item', 'value1')
+      cy.contains('li.ant-select-dropdown-menu-item', 'value2')
         .click();
 
       cy.getByTestId('ParameterApplyButton')
         .click();
 
-      cy.getByTestId('DynamicTable')
-        .should('contain', 'value1');
+      cy.getByTestId('TableVisualization')
+        .should('contain', 'value2');
+    });
+
+    it('supports multi-selection', () => {
+      cy.clickThrough(`
+        ParameterSettings-test-parameter
+        AllowMultipleValuesCheckbox
+        QuotationSelect
+        DoubleQuotationMarkOption
+        SaveParameterSettings
+      `);
+
+      cy.getByTestId('ParameterName-test-parameter')
+        .find('.ant-select')
+        .click();
+
+      // select all unselected options
+      cy.get('li.ant-select-dropdown-menu-item').each(($option) => {
+        if (!$option.hasClass('ant-select-dropdown-menu-item-selected')) {
+          cy.wrap($option).click();
+        }
+      });
+
+      cy.getByTestId('QueryEditor').click(); // just to close the select menu
+
+      cy.getByTestId('ParameterApplyButton')
+        .click();
+
+      cy.getByTestId('TableVisualization')
+        .should('contain', '"value1","value2","value3"');
     });
 
     it('sets dirty state when edited', () => {
@@ -145,7 +174,7 @@ describe('Parameter', () => {
           .find('.ant-select')
           .click();
 
-        cy.contains('li.ant-select-dropdown-menu-item', 'value1')
+        cy.contains('li.ant-select-dropdown-menu-item', 'value2')
           .click();
       });
     });
@@ -197,7 +226,7 @@ describe('Parameter', () => {
       cy.getByTestId('ParameterApplyButton')
         .click();
 
-      cy.getByTestId('DynamicTable')
+      cy.getByTestId('TableVisualization')
         .should('contain', Cypress.moment(this.now).format('15/MM/YY'));
     });
 
@@ -213,7 +242,7 @@ describe('Parameter', () => {
       cy.getByTestId('ParameterApplyButton')
         .click();
 
-      cy.getByTestId('DynamicTable')
+      cy.getByTestId('TableVisualization')
         .should('contain', Cypress.moment(this.now).format('DD/MM/YY'));
     });
 
@@ -271,7 +300,7 @@ describe('Parameter', () => {
       cy.getByTestId('ParameterApplyButton')
         .click();
 
-      cy.getByTestId('DynamicTable')
+      cy.getByTestId('TableVisualization')
         .should('contain', Cypress.moment(this.now).format('YYYY-MM-15 HH:mm'));
     });
 
@@ -289,7 +318,7 @@ describe('Parameter', () => {
       cy.getByTestId('ParameterApplyButton')
         .click();
 
-      cy.getByTestId('DynamicTable')
+      cy.getByTestId('TableVisualization')
         .should('contain', Cypress.moment(this.now).format('YYYY-MM-DD HH:mm'));
     });
 
@@ -305,7 +334,7 @@ describe('Parameter', () => {
       cy.getByTestId('ParameterApplyButton')
         .click();
 
-      cy.getByTestId('DynamicTable')
+      cy.getByTestId('TableVisualization')
         .should('contain', Cypress.moment(this.now).format('YYYY-MM-DD HH:mm'));
     });
 
@@ -374,7 +403,7 @@ describe('Parameter', () => {
         .click();
 
       const now = Cypress.moment(this.now);
-      cy.getByTestId('DynamicTable')
+      cy.getByTestId('TableVisualization')
         .should('contain', now.format('YYYY-MM-15') + ' - ' + now.format('YYYY-MM-20'));
     });
 
@@ -391,7 +420,7 @@ describe('Parameter', () => {
         .click();
 
       const lastMonth = Cypress.moment(this.now).subtract(1, 'month');
-      cy.getByTestId('DynamicTable')
+      cy.getByTestId('TableVisualization')
         .should('contain', lastMonth.startOf('month').format('YYYY-MM-DD') + ' - ' +
                            lastMonth.endOf('month').format('YYYY-MM-DD'));
     });
