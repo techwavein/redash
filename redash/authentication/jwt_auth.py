@@ -15,7 +15,7 @@ def get_public_keys(url):
     if url in key_cache:
         return key_cache[url]
     else:
-        r = requests.get(url)
+        r = requests.get(url, verify= False)
         r.raise_for_status()
         data = r.json()
         if 'keys' in data:
