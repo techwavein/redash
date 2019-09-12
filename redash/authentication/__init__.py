@@ -192,7 +192,8 @@ def jwt_token_load_user_from_request(request):
         user = models.User.get_by_email_and_org(payload['username'], org)
         login_user(user, remember=True)
     except models.NoResultFound:
-        user = create_and_login_user(current_org, payload['username'], payload['username'])
+        logger.info("ORG Details {}".format(current_org))
+        user = create_and_login_user(org, payload['username'], payload['username'])
 
     return user
 
