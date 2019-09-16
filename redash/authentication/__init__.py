@@ -20,6 +20,7 @@ logger = logging.getLogger('authentication')
 
 
 def get_login_url(external=False, next="/"):
+
     if settings.MULTI_ORG and current_org == None:
         login_url = '/'
     elif settings.MULTI_ORG:
@@ -182,18 +183,18 @@ def jwt_token_load_user_from_request(request):
         return
 
     reqOrg = request.args.get('org', None)
+    if not reqOrg:
+        raise Unauthorized('Invalid ORG')
     custom_org = Organization.get_by_slug(reqOrg)
     g.org = custom_org
-
-    logging.debug("Current organization: %s (slug: %s)", custom_org, reqOrg)
+    logging.info("Current organization: %s (slug: %s)", custom_org, reqOrg)
 
     try:
         logger.info("Payload {}".format(payload))
         user = models.User.get_by_email_and_org(payload['username'], org)
         login_user(user, remember=True)
-    except models.NoResultFound:
-        logger.info("ORG Details {}".format(current_org))
-        user = create_and_login_user(org, payload['username'], payload['username'])
+    except (models.NoResultFound, ValueError, AttributeError):
+        return None
 
     return user
 
