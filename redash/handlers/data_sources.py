@@ -157,17 +157,24 @@ class DataSourceSchemaResource(BaseResource):
         response = {}
 
         try:
-            response['schema'] = data_source.get_schema(refresh)
+            schema = data_source.get_schema(refresh)
+            orgSlug = self.current_org.slug
+            response['schema'] = []
+            for eachSchema in schema:
+                if eachSchema['name'].find(orgSlug) != -1 and eachSchema['name'].index(orgSlug) == 0:
+                    response['schema'].append(eachSchema)
+
         except NotSupported:
             response['error'] = {
                 'code': 1,
                 'message': 'Data source type does not support retrieving schema'
             }
-        except Exception:
+        except Exception, e:
             response['error'] = {
                 'code': 2,
                 'message': 'Error retrieving schema.'
             }
+            logging.error('Error retrieving schema. ' + str(e))
 
         return response
 
