@@ -6,6 +6,7 @@ from flask_login import current_user
 from flask_restful import abort
 from redash import models, settings
 from redash.handlers.base import BaseResource, get_object_or_404, record_event
+from redash.handlers import query_parser
 from redash.permissions import (has_access, not_view_only, require_access,
                                 require_permission, view_only)
 from redash.tasks import QueryTask
@@ -15,16 +16,23 @@ from redash.models.parameterized_query import (ParameterizedQuery, InvalidParame
                                                QueryDetachedFromDataSourceError, dropdown_values)
 from redash.serializers import serialize_query_result, serialize_query_result_to_csv, serialize_query_result_to_xlsx
 
+logger = logging.getLogger(__name__)
+
 
 def error_response(message, http_status=400):
     return {'job': {'status': 4, 'error': message}}, http_status
 
 
 error_messages = {
-    'unsafe_when_shared': error_response('This query contains potentially unsafe parameters and cannot be executed on a shared dashboard or an embedded visualization.', 403),
-    'unsafe_on_view_only': error_response('This query contains potentially unsafe parameters and cannot be executed with read-only access to this data source.', 403),
+    'unsafe_when_shared': error_response(
+        'This query contains potentially unsafe parameters and cannot be executed on a shared dashboard or an embedded visualization.',
+        403),
+    'unsafe_on_view_only': error_response(
+        'This query contains potentially unsafe parameters and cannot be executed with read-only access to this data source.',
+        403),
     'no_permission': error_response('You do not have permission to run queries with this data source.', 403),
-    'select_data_source': error_response('Please select data source to run this query.', 401)
+    'invalid_query': error_response('You do not have permission to run this query with this data source.', 403),
+    'select_data_source': error_response('Please select data source to run this query.', 401),
 }
 
 
@@ -97,6 +105,10 @@ class QueryResultListResource(BaseResource):
         params = request.get_json(force=True)
 
         query = params['query']
+        org_slug = self.current_org.slug
+        err = query_parser.validate_query(query, org_slug)
+        if err is not None:
+            return err
         max_age = params.get('max_age', -1)
         # max_age might have the value of None, in which case calling int(None) will fail
         if max_age is None:
