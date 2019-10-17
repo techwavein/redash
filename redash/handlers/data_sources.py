@@ -158,10 +158,11 @@ class DataSourceSchemaResource(BaseResource):
 
         try:
             schema = data_source.get_schema(refresh)
-            orgSlug = self.current_org.slug
+            orgSlug = self.current_org.slug.lower()
             response['schema'] = []
             for eachSchema in schema:
-                if eachSchema['name'].find(orgSlug) != -1 and eachSchema['name'].index(orgSlug) == 0:
+                schemaName = eachSchema['name'].lower()
+                if schemaName.find(orgSlug) != -1 and schemaName.index(orgSlug) == 0:
                     response['schema'].append(eachSchema)
 
         except NotSupported:
