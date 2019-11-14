@@ -15,7 +15,7 @@ def get_public_keys(url):
     if url in key_cache:
         return key_cache[url]
     else:
-        r = requests.get(url)
+        r = requests.get(url, verify= False)
         r.raise_for_status()
         data = r.json()
         if 'keys' in data:
@@ -39,6 +39,13 @@ def verify_jwt_token(jwt_token, expected_issuer, expected_audience, algorithms, 
     # https://cloud.google.com/iap/docs/signed-headers-howto
     # Loop through the keys since we can't pass the key set to the decoder
     keys = get_public_keys(public_certs_url)
+    jwt_options = {
+        'verify_signature': False,
+        'verify_exp': True,
+        'verify_nbf': False,
+        'verify_iat': True,
+        'verify_aud': False
+    }
 
     key_id = jwt.get_unverified_header(jwt_token).get('kid', '')
     if key_id and isinstance(keys, dict):
@@ -53,7 +60,8 @@ def verify_jwt_token(jwt_token, expected_issuer, expected_audience, algorithms, 
                 jwt_token,
                 key=key,
                 audience=expected_audience,
-                algorithms=algorithms
+                algorithms=algorithms,
+                options=jwt_options
             )
             issuer = payload['iss']
             if issuer != expected_issuer:

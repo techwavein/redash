@@ -8,7 +8,6 @@ if os.environ.get("REDASH_SAML_LOCAL_METADATA_PATH") is not None:
     print("your configuration and reload.")
     raise SystemExit(1)
 
-
 PASSWORD_LOGIN_ENABLED = parse_boolean(os.environ.get("REDASH_PASSWORD_LOGIN_ENABLED", "true"))
 
 SAML_METADATA_URL = os.environ.get("REDASH_SAML_METADATA_URL", "")
@@ -34,6 +33,11 @@ FEATURE_SHOW_PERMISSIONS_CONTROL = parse_boolean(os.environ.get("REDASH_FEATURE_
 SEND_EMAIL_ON_FAILED_SCHEDULED_QUERIES = parse_boolean(
     os.environ.get('REDASH_SEND_EMAIL_ON_FAILED_SCHEDULED_QUERIES', 'false'))
 
+AWS_COGNITO_ENABLED = parse_boolean(os.environ.get("REDASH_AWS_COGNITO_ENABLED", "false"))
+AWS_COGNITO_REGION = os.environ.get("REDASH_AWS_COGNITO_REGION", "")
+AWS_COGNITO_BASE_URL = os.environ.get("REDASH_AWS_COGNITO_BASE_URL", "")
+AWS_COGNITO_ORG_ATTRIBUTE = os.environ.get("REDASH_AWS_COGNITO_ORG_ATTRIBUTE", "")
+
 settings = {
     "beacon_consent": None,
     "auth_password_login_enabled": PASSWORD_LOGIN_ENABLED,
@@ -54,5 +58,9 @@ settings = {
     "auth_jwt_auth_cookie_name": JWT_AUTH_COOKIE_NAME,
     "auth_jwt_auth_header_name": JWT_AUTH_HEADER_NAME,
     "feature_show_permissions_control": FEATURE_SHOW_PERMISSIONS_CONTROL,
-    "send_email_on_failed_scheduled_queries": SEND_EMAIL_ON_FAILED_SCHEDULED_QUERIES
+    "send_email_on_failed_scheduled_queries": SEND_EMAIL_ON_FAILED_SCHEDULED_QUERIES,
+    "aws_cognito_enabled": AWS_COGNITO_ENABLED,
+    "aws_cognito_region": AWS_COGNITO_REGION,
+    "aws_cognito_base_url": AWS_COGNITO_BASE_URL,
+    "aws_cognito_org_attribute": AWS_COGNITO_ORG_ATTRIBUTE,
 }

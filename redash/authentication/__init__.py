@@ -4,13 +4,14 @@ import logging
 import time
 from urlparse import urlsplit, urlunsplit
 
-from flask import jsonify, redirect, request, url_for
+from flask import jsonify, redirect, request, url_for, g
 from flask_login import LoginManager, login_user, logout_user, user_logged_in
 from redash import models, settings
 from redash.authentication import jwt_auth
 from redash.authentication.org_resolving import current_org
 from redash.settings.organization import settings as org_settings
 from redash.tasks import record_event
+from redash.models import Organization
 from sqlalchemy.orm.exc import NoResultFound
 from werkzeug.exceptions import Unauthorized
 
@@ -93,7 +94,8 @@ def hmac_load_user_from_request(request):
             calculated_signature = sign(query.api_key, request.path, expires)
 
             if query.api_key and signature == calculated_signature:
-                return models.ApiUser(query.api_key, query.org, query.groups.keys(), name="ApiKey: Query {}".format(query.id))
+                return models.ApiUser(query.api_key, query.org, query.groups.keys(),
+                                      name="ApiKey: Query {}".format(query.id))
 
     return None
 
@@ -118,7 +120,8 @@ def get_user_from_api_key(api_key, query_id):
             if query_id:
                 query = models.Query.get_by_id_and_org(query_id, org)
                 if query and query.api_key == api_key:
-                    user = models.ApiUser(api_key, query.org, query.groups.keys(), name="ApiKey: Query {}".format(query.id))
+                    user = models.ApiUser(api_key, query.org, query.groups.keys(),
+                                          name="ApiKey: Query {}".format(query.id))
 
     return user
 
@@ -158,6 +161,9 @@ def jwt_token_load_user_from_request(request):
         jwt_token = request.cookies.get(org_settings['auth_jwt_auth_cookie_name'], None)
     elif org_settings['auth_jwt_auth_header_name']:
         jwt_token = request.headers.get(org_settings['auth_jwt_auth_header_name'], None)
+    elif org_settings['aws_cognito_enabled']:
+        jwt_token = request.args.get('id_token', None)
+        logger.info("AWS Cognito is enabled Token :: {}".format(jwt_token))
     else:
         return None
 
@@ -165,7 +171,7 @@ def jwt_token_load_user_from_request(request):
         payload, token_is_valid = jwt_auth.verify_jwt_token(
             jwt_token,
             expected_issuer=org_settings['auth_jwt_auth_issuer'],
-            expected_audience=org_settings['auth_jwt_auth_audience'],
+            expected_audience=None,
             algorithms=org_settings['auth_jwt_auth_algorithms'],
             public_certs_url=org_settings['auth_jwt_auth_public_certs_url'],
         )
@@ -176,9 +182,11 @@ def jwt_token_load_user_from_request(request):
         return
 
     try:
-        user = models.User.get_by_email_and_org(payload['email'], org)
-    except models.NoResultFound:
-        user = create_and_login_user(current_org, payload['email'], payload['email'])
+        logging.info("Current organization: {} Payload: {}".format(org, payload))
+        user = models.User.get_by_email_and_org(payload['username'], org)
+        login_user(user, remember=True)
+    except (models.NoResultFound, ValueError, AttributeError):
+        return None
 
     return user
 
@@ -212,7 +220,17 @@ def redirect_to_login():
 def logout_and_redirect_to_index():
     logout_user()
 
-    if settings.MULTI_ORG and current_org == None:
+    if org_settings['aws_cognito_enabled']:
+        index_url = org_settings['aws_cognito_base_url'] \
+                    + 'logout?' \
+                    + 'response_type=token' \
+                    + '&client_id=' \
+                    + org_settings['auth_jwt_auth_audience'] \
+                    + '&redirect_uri=' \
+                    + settings.HOST \
+                    + '/default' \
+                    + '/login'
+    elif settings.MULTI_ORG and current_org == None:
         index_url = '/'
     elif settings.MULTI_ORG:
         index_url = url_for('redash.index', org_slug=current_org.slug, _external=False)

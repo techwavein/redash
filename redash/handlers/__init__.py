@@ -1,17 +1,29 @@
-from flask import jsonify
-from flask_login import login_required
+from flask import jsonify, redirect
+from flask_login import login_required, current_user
 
 from redash.handlers.api import api
 from redash.handlers.base import routes
+from redash.handlers.static import render_index
 from redash.monitor import get_status
 from redash.permissions import require_super_admin
 from redash.security import talisman
+from redash import settings
 
 
 @routes.route('/ping', methods=['GET'])
 @talisman(force_https=False)
 def ping():
     return 'PONG.'
+
+
+@routes.route('/', methods=['GET'])
+def default_route():
+    if settings.MULTI_ORG:
+        return redirect("/default/", code=302)
+    elif current_user.is_authenticated:
+        return render_index()
+    else:
+        return redirect("/login/", code=302)
 
 
 @routes.route('/status.json')

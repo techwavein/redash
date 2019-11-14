@@ -13,7 +13,7 @@ def csp_allows_embeding(fn):
     def decorated(*args, **kwargs):
         return fn(*args, **kwargs)
 
-    embedable_csp = talisman.content_security_policy + "frame-ancestors *;"
+    embedable_csp = "self" + "frame-ancestors *;"
     return talisman(
         content_security_policy=embedable_csp,
         frame_options=None,

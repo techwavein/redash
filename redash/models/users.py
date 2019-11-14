@@ -24,7 +24,6 @@ from .types import json_cast_property, MutableDict, MutableList
 
 logger = logging.getLogger(__name__)
 
-
 LAST_ACTIVE_KEY = 'users:last_active_at'
 
 
@@ -184,7 +183,7 @@ class User(TimestampMixin, db.Model, BelongsToOrgMixin, UserMixin, PermissionsCh
 
     @classmethod
     def get_by_email_and_org(cls, email, org):
-        return cls.get_by_org(org).filter(cls.email == email).one()
+        return cls.get_by_org(org).filter(cls.email.ilike(email)).one()
 
     @classmethod
     def get_by_api_key_and_org(cls, api_key, org):

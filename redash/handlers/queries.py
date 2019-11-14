@@ -10,6 +10,7 @@ from redash.authentication.org_resolving import current_org
 from redash.handlers.base import (BaseResource, filter_by_tags, get_object_or_404,
                                   org_scoped_rule, paginate, routes, order_results as _order_results)
 from redash.handlers.query_results import run_query
+from redash.handlers import query_parser
 from redash.permissions import (can_modify, not_view_only, require_access,
                                 require_admin_or_owner,
                                 require_object_modify_permission,
@@ -17,7 +18,6 @@ from redash.permissions import (can_modify, not_view_only, require_access,
 from redash.utils import collect_parameters_from_request
 from redash.serializers import QuerySerializer
 from redash.models.parameterized_query import ParameterizedQuery
-
 
 # Ordering map for relationships
 order_map = {
@@ -223,6 +223,11 @@ class QueryListResource(BaseQueryListResource):
         :>json number runtime: Runtime of last query execution, in seconds (may be null)
         """
         query_def = request.get_json(force=True)
+        req_query = query_def.pop('query')
+        org_slug = self.current_org.slug
+        err = query_parser.validate_query(req_query, org_slug)
+        if err is not None:
+            return err
         data_source = models.DataSource.get_by_id_and_org(query_def.pop('data_source_id'), self.current_org)
         require_access(data_source, self.current_user, not_view_only)
         require_access_to_dropdown_queries(self.current_user, query_def)
@@ -230,7 +235,7 @@ class QueryListResource(BaseQueryListResource):
         for field in ['id', 'created_at', 'api_key', 'visualizations', 'latest_query_data', 'last_modified_by']:
             query_def.pop(field, None)
 
-        query_def['query_text'] = query_def.pop('query')
+        query_def['query_text'] = req_query
         query_def['user'] = self.current_user
         query_def['data_source'] = data_source
         query_def['org'] = self.current_org
@@ -329,11 +334,17 @@ class QueryResource(BaseResource):
         require_object_modify_permission(query, self.current_user)
         require_access_to_dropdown_queries(self.current_user, query_def)
 
-        for field in ['id', 'created_at', 'api_key', 'visualizations', 'latest_query_data', 'user', 'last_modified_by', 'org']:
+        for field in ['id', 'created_at', 'api_key', 'visualizations', 'latest_query_data', 'user', 'last_modified_by',
+                      'org']:
             query_def.pop(field, None)
 
         if 'query' in query_def:
-            query_def['query_text'] = query_def.pop('query')
+            req_query = query_def.pop('query')
+            org_slug = self.current_org.slug
+            err = query_parser.validate_query(req_query, org_slug)
+            if err is not None:
+                return err
+            query_def['query_text'] = req_query
 
         if 'tags' in query_def:
             query_def['tags'] = filter(None, query_def['tags'])
